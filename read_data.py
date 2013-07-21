@@ -110,6 +110,19 @@ def get_reading_from_line(line):
         )
 
 
+def sum_counts(data, dates, times):
+    data_sum = 0.0
+    # goes through each date
+    for date in dates:
+        # and each time
+        for time in times:
+            # and if the corresponding value exists, adds it to the overall
+            # import pdb; pdb.set_trace()
+            if str(data[date][time]) is not '-':
+                # print('adding', data[date][time])
+                data_sum += data[date][time]
+    return data_sum
+
 def transpose_csv(file_name):
     a = izip(*csv.reader(open(file_name, 'rb')))
     csv.writer(open(file_name, 'wb')).writerows(a)
@@ -158,7 +171,7 @@ if __name__ == '__main__':
     times = list(times)
     times.sort()
 
-    # # we'll write the CSV file transposed and transpose to the right format later
+    # write the CSV file
     print('writing to ',  out_file)
     with open(out_file, 'w') as f:
         # write row of times
@@ -176,3 +189,31 @@ if __name__ == '__main__':
             for time in times:
                 f.write(str(data_collection[sensor_type][date][time]) + ',')
             f.write('\n')
+
+
+    # extract data for the report
+    data_file_regex = re.compile('''(?x)
+            (?P<pin>[0-9]{1,3})
+            b
+            (?P<b>[0-9]{1,2})
+            a
+            (?P<a>[0-9]{1,2})
+            \.
+            (?P<num>[0-9]{1})
+    ''')
+    dd = data_file.split('/')[-1]
+    groups = data_file_regex.match(dd)
+    pin = groups.groupdict()['pin']
+    a = groups.groupdict()['a']
+    b = groups.groupdict()['b']
+    days = len(data_collection[sensor_type].keys())
+    data_sum = sum_counts(data_collection[1], data_collection[1].keys(), times)
+
+    # write the report file
+    report_path = data_file + '_report.txt'
+    with open(report_path, 'w') as f:
+        g = groups.groupdict()
+        f.write('pin\t\ta\t\tb\t\tdays\t\tsum\n')
+        f.write('{0}\t\t{1}\t\t{2}\t\t{3}\t\t{4}\n'.format(pin, a, b, days, data_sum))
+
+    print(open(report_path, 'r').read())
