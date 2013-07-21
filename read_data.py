@@ -29,7 +29,7 @@ sr_regex = re.compile('''(?x)
         )
         \s                      # whitespace 
         (?P<sensor_type>[1-3]*) # second value
-    $
+                                # no line ending (avoid Windows mess)
 ''')
 
 timestamp_regex = re.compile('''(?x)
@@ -39,7 +39,7 @@ timestamp_regex = re.compile('''(?x)
         (?P<time>[0-9]{2}:[0-9]{2}:[0-9]{2})    # match time like 22:00:00
         \s                                      # whitespace
         Timestamp                               # word 'Timestamp'
-    $
+                                                # no line ending (avoid Windows mess)
 ''')
 
 end_data_regex = re.compile('End of data')
