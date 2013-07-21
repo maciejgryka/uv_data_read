@@ -5,6 +5,7 @@ import sys
 import re
 import csv
 from itertools import izip
+from collections import OrderedDict, defaultdict
 
 
 current_date = ''
@@ -29,7 +30,7 @@ sr_regex = re.compile('''(?x)
         )
         \s                      # whitespace 
         (?P<sensor_type>[1-3]*) # second value
-        r\r?\n                  # line ending
+        r\r?\n                 # line ending
 ''')
 
 timestamp_regex = re.compile('''(?x)
@@ -39,17 +40,20 @@ timestamp_regex = re.compile('''(?x)
         (?P<time>[0-9]{2}:[0-9]{2}:[0-9]{2})    # match time like 22:00:00
         \s                                      # whitespace
         Timestamp                               # word 'Timestamp'
-        r\r?\n                                  # line ending
+        r\r?\n                                 # line ending
 ''')
 
 end_data_regex = re.compile('End of data')
 
 data_collection = {}
-data_collection[1] = {}
-data_collection[2] = {}
-data_collection[3] = {}
+data_collection[1] = OrderedDict()
+data_collection[2] = OrderedDict()
+data_collection[3] = OrderedDict()
 
 current_date = ''
+
+# times of day where a reading was taken; this includes readinga from ALL dates
+times = set()
 
 line = ''
 header = ''
@@ -61,22 +65,12 @@ class SensorReading(object):
         self.sensor_type = int(sensor_type)
 
     def __str__(self):
-        return '{0} {1} {2}'.format(self.time, self.val, self.sensor_type)
+        return str(self.val)
 
     def __repr__(self):
-        return 'SensorReading()'
-
-
-class DayData(object):
-    def __init__(self, date='', readings=[]):
-        self.date = date
-        self.readings = readings
-
-
-class DataSet(object):
-    def __init__(self, meta='', days=[]):
-        self.meta = meta
-        self.days = days
+        return 'SensorReading(\'{0}\', {1}, {2})'.format(
+            self.time, self.sensor_type, self.val
+        )
 
 
 def is_timestamp(line):
@@ -103,16 +97,16 @@ def get_date_from_timestamp(timestamp):
         return None
 
 
-def get_rading_from_line(line):
+def get_reading_from_line(line):
     global sr_regex  
     re_obj = sr_regex.match(line)
     if not re_obj:
         return None
     else:
         return SensorReading(
-            time = re_obj.group('time'),
-            val = re_obj.group('val'),
-            sensor_type = re_obj.group('sensor_type')
+            time=re_obj.group('time'),
+            val=re_obj.group('val'),
+            sensor_type=re_obj.group('sensor_type')
         )
 
 
@@ -138,18 +132,20 @@ if __name__ == '__main__':
         while True:
             line = f.readline()
             if is_timestamp(line):
-                # if it's a timestamp line start recording a given date, unless
-                # it's already added
+                # start recording a given date
                 current_date = get_date_from_timestamp(line)
             elif is_sensor_reading(line):
-                # if it's a line with a sensor reading, add it to the dict
-                reading = get_rading_from_line(line)
-                if reading:
-                    if current_date not in data_collection[reading.sensor_type]:
-                        data_collection[reading.sensor_type][current_date] = []
-                        print('reading', current_date, str(reading.sensor_type))
-                    data_collection[reading.sensor_type][current_date].append(reading)
-            elif not line:
+                # sensor reading line, add it to the dict
+                reading = get_reading_from_line(line)
+                # accumulate only time readings for the current sensor
+                if reading.sensor_type==sensor_type:
+                    times.add(reading.time)
+                if current_date not in data_collection[reading.sensor_type]:
+                    data_collection[reading.sensor_type][current_date] = defaultdict(lambda: '-')
+                    print('reading', current_date, str(reading.sensor_type))                    
+                data_collection[reading.sensor_type][current_date][reading.time] = reading.val
+            elif line.find('End of data') > -1:
+                # the end
                 break
             else:
                 header += line
@@ -157,29 +153,26 @@ if __name__ == '__main__':
 
     dates = data_collection[sensor_type].keys()
     dates.sort()
-    dates = dates[1:-1]
+    # dates = dates[1:-1]
 
-    # we'll write the CSV file transposed and transpose to the right format later
+    times = list(times)
+    times.sort()
+
+    # # we'll write the CSV file transposed and transpose to the right format later
     print('writing to ',  out_file)
-    times = []
     with open(out_file, 'w') as f:
         # write row of times
         # with one empty cell first
         f.write(' ,')
-        for reading in data_collection[sensor_type][dates[0]]:
-            times.append(reading.time)
-            f.write(times[-1] + ',')
+        for time in times:
+            f.write(time + ',')
 
         # start new line
         f.write('\n')
 
-        # for each date write values at given times
+        # for each date write values at all times
         for date in dates:
             f.write(date + ',')
-            readings = data_collection[sensor_type][date]
-            for reading in readings:
-                f.write(str(reading.val) + ',')
+            for time in times:
+                f.write(str(data_collection[sensor_type][date][time]) + ',')
             f.write('\n')
-
-    print('transposing')
-    transpose_csv(out_file)
