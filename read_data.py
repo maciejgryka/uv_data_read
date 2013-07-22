@@ -94,6 +94,13 @@ class SensorData(object):
     def get_value(self, date, time):
         return self.values['{0} {1}'.format(date, time)]
 
+    def get_first_date_over(self, threshold):
+        day_sums = self.get_day_sums()
+        for date in self.dates:
+            if day_sums[date] > threshold:
+                return date
+        return None
+
     def get_n_days(self, min_val=None):
         """
         Lazily compute and return the number of unique days in the data. If
@@ -260,9 +267,7 @@ if __name__ == '__main__':
         for date in sensor_data.dates:
             f.write(date + ',')
             for time in sensor_data.times:
-                value = sensor_data.get_value(date, time)
-                if value is None:
-                    value = '-'
+                value = sensor_data.get_value(date, time) or '-'
                 f.write(str(value) + ',')
             f.write('\n')
 
@@ -273,11 +278,12 @@ if __name__ == '__main__':
     # write the report file
     report_path = data_file + '_report.csv'
     with open(report_path, 'w') as f:
-        f.write('pin,a,b,days,valid_days,sum\n')
-        f.write('{0},{1},{2},{3},{4},{5}\n'.format(
+        f.write('pin,month a,month b,first day over {0}, days,days over {0},sum over valid days\n'.format(THRESHOLD))
+        f.write('{0},{1},{2},{3},{4},{5},{6}\n'.format(
             badge_data.pin,
             badge_data.a,
             badge_data.b,
+            sensor_data.get_first_date_over(THRESHOLD),
             days,
             valid_days,
             sensor_data.get_sum(THRESHOLD)
