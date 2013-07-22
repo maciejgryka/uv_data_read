@@ -233,15 +233,15 @@ class SensorReading(object):
     @classmethod
     def from_line(cls, line, date): 
         re_obj = cls.pattern.match(line)
-        if re_obj is None:
-            return None
-        else:
+        if re_obj:
             return SensorReading(
                 date=date,
                 time=re_obj.group('time'),
                 val=re_obj.group('val'),
                 sensor_type=re_obj.group('sensor_type')
             )
+        else:
+            return None
 
     @classmethod
     def legit(cls, line):
@@ -279,7 +279,7 @@ if __name__ == '__main__':
         if data_file_name is None:
             continue
 
-        print('reading ', data_file, '...', end='')
+        print('reading ', data_file, '... ', end='')
         out_file = data_file + '.csv'
 
         badge_data = BadgeData(data_file)
