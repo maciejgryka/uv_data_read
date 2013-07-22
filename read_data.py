@@ -180,7 +180,7 @@ class SensorReading(object):
 
     @classmethod
     def legit(cls, line):
-        """Return True if teh given line represents a valid SensorReading."""
+        """Return True if the given line represents a valid SensorReading."""
         return cls.pattern.match(line) is not None
 
 
@@ -211,7 +211,7 @@ if __name__ == '__main__':
     if len(sys.argv) is 3:
         sensor_type = int(sys.argv[2])
 
-    badge_data = BadgeData(data_file.split('/')[-1])
+    badge_data = BadgeData(data_file)
 
     current_date = ''
     # read the data
