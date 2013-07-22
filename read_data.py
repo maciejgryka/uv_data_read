@@ -9,6 +9,7 @@ from collections import OrderedDict, defaultdict
 
 
 THRESHOLD = 50.0
+SENSOR_TYPE = 1
 
 
 timestamp_regex = re.compile('''(?x)
@@ -50,6 +51,24 @@ class BadgeData(object):
         self.pin = groups['pin']
         self.a = groups['a']
         self.b = groups['b']
+
+        self.parse(data_file)
+
+    def parse(self, data_file):
+        current_date = ''
+        # read the data
+        with open(data_file, 'r') as f:
+            for line in f:
+                if is_timestamp(line):
+                    # start recording a given date
+                    current_date = get_date_from_timestamp(line)
+                elif SensorReading.legit(line):
+                    # sensor reading line, add it to the dict
+                    reading = SensorReading.from_line(line, current_date)
+                    self.add_reading(reading)
+                else:
+                    self.header += line
+        print('done reading data')
 
     def add_reading(self, sensor_reading):
         """Add reading to the appropriate SensorData instance."""
@@ -141,6 +160,25 @@ class SensorData(object):
                 if day_sums[day] > min_val
             )
 
+    def write_to_csv(self, file_path):
+        with open(file_path, 'w') as f:
+            # write row of times
+            # with one empty cell first
+            f.write(' ,')
+            for time in self.times:
+                f.write(time + ',')
+
+            # start new line
+            f.write('\n')
+
+            # for each date write values at all times
+            for date in self.dates:
+                f.write(date + ',')
+                for time in self.times:
+                    value = self.get_value(date, time) or '-'
+                    f.write(str(value) + ',')
+                f.write('\n')
+
 
 class SensorReading(object):
     """Single reading from a sensor."""
@@ -218,75 +256,43 @@ def get_date_from_timestamp(timestamp):
 if __name__ == '__main__':
     n_args = len(sys.argv)
     if not (n_args == 2 or n_args == 3):
-        print('Need arguments: data_file [sensor_type]')
+        print('Need arguments: data_file [threshold]')
         sys.exit()
 
 
     data_file = sys.argv[1]
     out_file = data_file + '.csv'
-    sensor_type = 1
+
+    sensor_type = SENSOR_TYPE
+
+    threshold = THRESHOLD
     if len(sys.argv) is 3:
-        sensor_type = int(sys.argv[2])
+        threshold = int(sys.argv[2])
+
 
     badge_data = BadgeData(data_file)
-
-    current_date = ''
-    # read the data
-    with open(data_file, 'r') as f:
-        for line in f:
-            if is_timestamp(line):
-                # start recording a given date
-                current_date = get_date_from_timestamp(line)
-            elif SensorReading.legit(line):
-                # sensor reading line, add it to the dict
-                reading = SensorReading.from_line(line, current_date)
-                badge_data.add_reading(reading)
-            else:
-                badge_data.header += line
-    print('done reading data')
 
     sensor_data = badge_data.sensors[sensor_type]
 
     for date in sensor_data.dates:
         print(date, sensor_data.sensor_type, sensor_data.get_day_sums()[date])
 
-
-    # write the CSV file
-    print('writing to ',  out_file)
-    with open(out_file, 'w') as f:
-        # write row of times
-        # with one empty cell first
-        f.write(' ,')
-        for time in sensor_data.times:
-            f.write(time + ',')
-
-        # start new line
-        f.write('\n')
-
-        # for each date write values at all times
-        for date in sensor_data.dates:
-            f.write(date + ',')
-            for time in sensor_data.times:
-                value = sensor_data.get_value(date, time) or '-'
-                f.write(str(value) + ',')
-            f.write('\n')
-
-
-    days = sensor_data.get_n_days()
-    valid_days = sensor_data.get_n_days(THRESHOLD)
+    # write the CSV data file
+    sensor_data.write_to_csv(out_file)
 
     # write the report file
+    days = sensor_data.get_n_days()
+    valid_days = sensor_data.get_n_days(threshold)
     report_path = data_file + '_report.csv'
     with open(report_path, 'w') as f:
-        f.write('pin,month a,month b,first day over {0}, days,days over {0},sum over valid days\n'.format(THRESHOLD))
+        f.write('pin,month a,month b,first day over {0},days overall,days over {0},sum over valid days\n'.format(threshold))
         f.write('{0},{1},{2},{3},{4},{5},{6}\n'.format(
             badge_data.pin,
             badge_data.a,
             badge_data.b,
-            sensor_data.get_first_date_over(THRESHOLD),
+            badge_data.sensors[sensor_type].get_first_date_over(threshold),
             days,
             valid_days,
-            sensor_data.get_sum(THRESHOLD)
+            badge_data.sensors[sensor_type].get_sum(threshold)
         ))
-
     print(open(report_path, 'r').read())
