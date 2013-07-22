@@ -267,7 +267,7 @@ if __name__ == '__main__':
 
     threshold = THRESHOLD
     if len(sys.argv) is 3:
-        threshold = int(sys.argv[2])
+        threshold = float(sys.argv[2])
 
 
     badge_data = BadgeData(data_file)
