@@ -13,7 +13,7 @@ THRESHOLD = 50.0
 SENSOR_TYPE = 1
 
 
-timestamp_regex = re.compile('''(?x)
+timestamp_pattern = re.compile('''(?x)
     ^
         (?P<date>[0-9]{4}-[0-9]{2}-[0-9]{2})    # match date like 2012-07-31
         \s                                      # whitespace
@@ -70,13 +70,14 @@ class BadgeData(object):
         # read the data
         with open(data_file, 'r') as f:
             for line in f:
-                if is_timestamp(line):
+                timestamp = get_date_from_timestamp(line)
+                sensor_reading = SensorReading.from_line(line, current_date)
+                if timestamp:
                     # start recording a given date
                     current_date = get_date_from_timestamp(line)
-                elif SensorReading.legit(line):
+                elif sensor_reading:
                     # sensor reading line, add it to the dict
-                    reading = SensorReading.from_line(line, current_date)
-                    self.add_reading(reading)
+                    self.add_reading(sensor_reading)
                 else:
                     self.header += line
 
@@ -233,8 +234,7 @@ class SensorReading(object):
     def from_line(cls, line, date): 
         re_obj = cls.pattern.match(line)
         if re_obj is None:
-            raise RuntimeError('The following line does not match a '
-                               'SensorReading pattern: {0}'.format(line))
+            return None
         else:
             return SensorReading(
                 date=date,
@@ -249,16 +249,10 @@ class SensorReading(object):
         return cls.pattern.match(line) is not None
 
 
-def is_timestamp(line):
-    global timestamp_regex
-    return timestamp_regex.match(line) is not None
-
-
 def get_date_from_timestamp(timestamp):
-    global timestamp_regex
-    re_obj = timestamp_regex.match(timestamp)
-    if re_obj:
-        return re_obj.group('date')
+    groups = timestamp_pattern.match(timestamp)
+    if groups:
+        return groups.group('date')
     else:
         return None
 
