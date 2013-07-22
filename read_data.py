@@ -8,6 +8,9 @@ from itertools import izip
 from collections import OrderedDict, defaultdict
 
 
+THRESHOLD = 50.0
+
+
 timestamp_regex = re.compile('''(?x)
     ^
         (?P<date>[0-9]{4}-[0-9]{2}-[0-9]{2})    # match date like 2012-07-31
@@ -119,10 +122,17 @@ class SensorData(object):
                 self.day_sums[reading.date] += reading.value
             return self.day_sums
 
-    def get_sum(self):
+    def get_sum(self, min_val=None):
         day_sums = self.get_day_sums()
         sensor_sum = 0.0
-        return sum(day_sums[day] for day in day_sums.keys())
+        if min_val is None:
+            return sum(day_sums[day] for day in day_sums.keys())
+        else:
+            return sum(
+                day_sums[day]
+                for day in day_sums.keys()
+                if day_sums[day] > min_val
+            )
 
 
 class SensorReading(object):
@@ -258,7 +268,7 @@ if __name__ == '__main__':
 
 
     days = sensor_data.get_n_days()
-    valid_days = sensor_data.get_n_days(50.0)
+    valid_days = sensor_data.get_n_days(THRESHOLD)
 
     # write the report file
     report_path = data_file + '_report.csv'
@@ -270,7 +280,7 @@ if __name__ == '__main__':
             badge_data.b,
             days,
             valid_days,
-            sensor_data.get_sum()
+            sensor_data.get_sum(THRESHOLD)
         ))
 
     print(open(report_path, 'r').read())
