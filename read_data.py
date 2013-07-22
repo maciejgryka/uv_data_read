@@ -1,6 +1,7 @@
  # -*- coding: utf-8 -*-
 from __future__ import print_function
 
+import os
 import sys
 import re
 import csv
@@ -32,13 +33,15 @@ class BadgeData(object):
     """
 
     name_pattern = re.compile('''(?x)
-        (?P<pin>[0-9]{1,3})
-        b
-        (?P<b>[0-9]{1,2})
-        a
-        (?P<a>[0-9]{1,2})
-        \.
-        (?P<num>[0-9]{1})
+        ^
+            (?P<pin>[0-9]{1,3})
+            b
+            (?P<b>[0-9]{1,2})
+            a
+            (?P<a>[0-9]{1,2})
+            \.
+            (?P<num>[0-9]{1})
+        $
     ''')
 
     def __init__(self, data_file, header=''):
@@ -46,13 +49,21 @@ class BadgeData(object):
         self.sensors = {}
 
         # extract data from the name
-        self.name = data_file.split('/')[-1]
+        self.name = self.get_name_from_path(data_file)
         groups = self.name_pattern.match(self.name).groupdict()
         self.pin = groups['pin']
         self.a = groups['a']
         self.b = groups['b']
 
         self.parse(data_file)
+
+    @classmethod
+    def get_name_from_path(cls, file_path):
+        """Get data file name from the file path, or None if invalid."""
+        _, name = os.path.split(file_path)
+        if cls.name_pattern.match(name) is None:
+            return None
+        return name
 
     def parse(self, data_file):
         current_date = ''
@@ -68,7 +79,6 @@ class BadgeData(object):
                     self.add_reading(reading)
                 else:
                     self.header += line
-        print('done reading data')
 
     def add_reading(self, sensor_reading):
         """Add reading to the appropriate SensorData instance."""
@@ -256,12 +266,8 @@ def get_date_from_timestamp(timestamp):
 if __name__ == '__main__':
     n_args = len(sys.argv)
     if not (n_args == 2 or n_args == 3):
-        print('Need arguments: data_file [threshold]')
+        print('Need arguments: data_dir [threshold]')
         sys.exit()
-
-
-    data_file = sys.argv[1]
-    out_file = data_file + '.csv'
 
     sensor_type = SENSOR_TYPE
 
@@ -269,31 +275,50 @@ if __name__ == '__main__':
     if len(sys.argv) is 3:
         threshold = float(sys.argv[2])
 
+    data_dir = sys.argv[1]
 
-    badge_data = BadgeData(data_file)
+    badges = []
 
-    sensor_data = badge_data.sensors[sensor_type]
+    for data_file in os.listdir(data_dir):
+        data_file = os.path.abspath(os.path.join(data_dir, data_file))
+        data_file_name = BadgeData.get_name_from_path(data_file)
+        if data_file_name is None:
+            continue
 
-    for date in sensor_data.dates:
-        print(date, sensor_data.sensor_type, sensor_data.get_day_sums()[date])
+        print('reading ', data_file, '...', end='')
+        out_file = data_file + '.csv'
 
-    # write the CSV data file
-    sensor_data.write_to_csv(out_file)
+        badge_data = BadgeData(data_file)
+        badges.append(badge_data)
+
+        sensor_data = badge_data.sensors[sensor_type]
+
+        with open(data_file + '_report.txt', 'w') as f:
+            f.write('Sensor {0} data for {1}\n\n'.format(sensor_type, badge_data.name))
+            for date in sensor_data.dates:
+                f.write('{0}\t{1}\t{2}\n'.format(date, sensor_data.sensor_type, sensor_data.get_day_sums()[date]))
+                # print(date, sensor_data.sensor_type, sensor_data.get_day_sums()[date])
+
+        # write the CSV data file
+        sensor_data.write_to_csv(out_file)
+        print('done')
 
     # write the report file
-    days = sensor_data.get_n_days()
-    valid_days = sensor_data.get_n_days(threshold)
-    report_path = data_file + '_report.csv'
+    report_path = os.path.join(data_dir, 'report.csv')
     with open(report_path, 'w') as f:
         f.write('pin,month a,month b,first day over {0},days overall,'
                 'days over {0},sum over valid days\n'.format(threshold))
-        f.write('{0},{1},{2},{3},{4},{5},{6}\n'.format(
-            badge_data.pin,
-            badge_data.a,
-            badge_data.b,
-            badge_data.sensors[sensor_type].get_first_date_over(threshold),
-            days,
-            valid_days,
-            badge_data.sensors[sensor_type].get_sum(threshold)
-        ))
+        for badge_data in badges:
+            sensor_data = badge_data.sensors[sensor_type]
+            days = sensor_data.get_n_days()
+            valid_days = sensor_data.get_n_days(threshold)
+            f.write('{0},{1},{2},{3},{4},{5},{6}\n'.format(
+                badge_data.pin,
+                badge_data.a,
+                badge_data.b,
+                sensor_data.get_first_date_over(threshold),
+                days,
+                valid_days,
+                sensor_data.get_sum(threshold)
+            ))
     print(open(report_path, 'r').read())
