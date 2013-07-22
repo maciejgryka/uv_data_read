@@ -59,7 +59,7 @@ class BadgeData(object):
 
     @classmethod
     def get_name_from_path(cls, file_path):
-        """Get data file name from the file path, or None if invalid."""
+        """Get data file name from <file_path>, or None if invalid."""
         _, name = os.path.split(file_path)
         if cls.name_pattern.match(name) is None:
             return None
@@ -106,15 +106,15 @@ class SensorData(object):
 
     def add_reading(self, reading):
         """
-        Add reading to the list. Also add the reading value to the dict for
-        faster lookup.
+        Add <reading> to the list. Also add the reading value to the <values>
+        dict for faster lookup later.
 
         """
         self._times.add(reading.time)
         if reading.date not in self.dates:
             self.dates.append(reading.date)
 
-        self.values['{0} {1}'.format(reading.date, reading.time)] = reading.value
+        self.values[reading.date + reading.time] = reading.value
         self.readings.append(reading)
 
     @property
@@ -122,7 +122,7 @@ class SensorData(object):
         return sorted(list(self._times))
 
     def get_value(self, date, time):
-        return self.values['{0} {1}'.format(date, time)]
+        return self.values[date + time]
 
     def get_first_date_over(self, threshold):
         day_sums = self.get_day_sums()
@@ -288,10 +288,13 @@ if __name__ == '__main__':
         sensor_data = badge_data.sensors[sensor_type]
 
         with open(data_file + '_report.txt', 'w') as f:
-            f.write('Sensor {0} data for {1}\n\n'.format(sensor_type, badge_data.name))
+            f.write('Sensor {0} data for {1}\n\n'.format(sensor_type,
+                badge_data.name
+            ))
             for date in sensor_data.dates:
-                f.write('{0}\t{1}\t{2}\n'.format(date, sensor_data.sensor_type, sensor_data.get_day_sums()[date]))
-                # print(date, sensor_data.sensor_type, sensor_data.get_day_sums()[date])
+                f.write('{0}\t{1}\t{2}\n'.format(date, sensor_data.sensor_type,
+                    sensor_data.get_day_sums()[date]
+                ))
 
         # write the CSV data file
         sensor_data.write_to_csv(out_file)
