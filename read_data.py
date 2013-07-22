@@ -285,7 +285,8 @@ if __name__ == '__main__':
     valid_days = sensor_data.get_n_days(threshold)
     report_path = data_file + '_report.csv'
     with open(report_path, 'w') as f:
-        f.write('pin,month a,month b,first day over {0},days overall,days over {0},sum over valid days\n'.format(threshold))
+        f.write('pin,month a,month b,first day over {0},days overall,'
+                'days over {0},sum over valid days\n'.format(threshold))
         f.write('{0},{1},{2},{3},{4},{5},{6}\n'.format(
             badge_data.pin,
             badge_data.a,
