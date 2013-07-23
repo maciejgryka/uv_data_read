@@ -5,6 +5,7 @@ import os
 import sys
 import re
 import csv
+import time
 from itertools import izip
 from collections import OrderedDict, defaultdict
 
@@ -307,19 +308,29 @@ if __name__ == '__main__':
     # write the report file
     report_path = os.path.join(data_dir, 'report.csv')
     with open(report_path, 'w') as f:
-        f.write('pin,month a,month b,first day over {0},days overall,'
-                'days over {0},sum over valid days\n'.format(threshold))
+        f.write('pin,month b,month a,first date over {threshold} (day),'
+                'first date over {threshold} (month),days overall,'
+                'days over {threshold},sum over valid days,'
+                'average valid day count\n'.format(threshold=threshold))
         for badge_data in badges:
             sensor_data = badge_data.sensors[sensor_type]
-            days = sensor_data.get_n_days()
-            valid_days = sensor_data.get_n_days(threshold)
-            f.write('{0},{1},{2},{3},{4},{5},{6}\n'.format(
-                badge_data.pin,
-                badge_data.a,
-                badge_data.b,
-                sensor_data.get_first_date_over(threshold),
-                days,
-                valid_days,
-                sensor_data.get_sum(threshold)
+            first_valid_day = sensor_data.get_first_date_over(threshold)
+            n_days = sensor_data.get_n_days()
+            n_valid_days = sensor_data.get_n_days(threshold)
+            sum_valid_days = sensor_data.get_sum(threshold)
+            avg_valid_days = sum_valid_days / n_valid_days
+            
+            f.write('{pin},{b},{a},{first_valid_day},{first_valid_month},'
+                    '{n_days},{n_valid_days},{sum_valid_days},'
+                    '{avg_valid_day}\n'.format(
+                        pin=badge_data.pin,
+                        b=badge_data.b,
+                        a=badge_data.a,
+                        first_valid_day=first_valid_day,
+                        first_valid_month=time.strptime(first_valid_day, '%Y-%m-%d').tm_mon,
+                        n_days=n_days,
+                        n_valid_days=n_valid_days,
+                        sum_valid_days=sum_valid_days,
+                        avg_valid_day=avg_valid_days
             ))
     print(open(report_path, 'r').read())
