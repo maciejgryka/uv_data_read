@@ -124,6 +124,7 @@ class SensorData(object):
 
     @property
     def dates(self):
+        """Disregard the first day, it's usually dodgy."""
         return self._dates[1:]
 
     def get_value(self, date, time):
