@@ -102,7 +102,7 @@ class SensorData(object):
         self._times = set()
         # we want dates to be unique too, but also to preserve ordering, so we
         # manually keep track of what goes on there
-        self.dates = []
+        self._dates = []
 
     def add_reading(self, reading):
         """
@@ -111,8 +111,8 @@ class SensorData(object):
 
         """
         self._times.add(reading.time)
-        if reading.date not in self.dates:
-            self.dates.append(reading.date)
+        if reading.date not in self._dates:
+            self._dates.append(reading.date)
 
         self.values[reading.date + reading.time] = reading.value
         self.readings.append(reading)
@@ -120,6 +120,10 @@ class SensorData(object):
     @property
     def times(self):
         return sorted(list(self._times))
+
+    @property
+    def dates(self):
+        return self._dates[1:]
 
     def get_value(self, date, time):
         return self.values[date + time]
