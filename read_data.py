@@ -78,6 +78,8 @@ class BadgeData(object):
                     current_date = get_date_from_timestamp(line)
                 elif sensor_reading:
                     # sensor reading line, add it to the dict
+                    # import pdb; pdb.set_trace()
+                    # print(line)
                     self.add_reading(sensor_reading)
                 else:
                     self.header += line
@@ -239,12 +241,17 @@ class SensorReading(object):
     def from_line(cls, line, date): 
         re_obj = cls.pattern.match(line)
         if re_obj:
-            return SensorReading(
-                date=date,
-                time=re_obj.group('time'),
-                val=re_obj.group('val'),
-                sensor_type=re_obj.group('sensor_type')
-            )
+            # sometimes data files are corrupted...
+            try:
+                return SensorReading(
+                    date=date,
+                    time=re_obj.group('time'),
+                    val=re_obj.group('val'),
+                    sensor_type=re_obj.group('sensor_type')
+                )
+            except:
+                print('\nWARNING: invalid line at date {0}: \"{1}\"'.format(date, line.strip('\n')))
+                return None
         else:
             return None
 
