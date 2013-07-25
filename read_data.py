@@ -276,7 +276,14 @@ if __name__ == '__main__':
 
     data_dir = sys.argv[1]
 
-    badges = []
+
+    # write CSV header
+    report_path = os.path.join(data_dir, 'report.csv')
+    with open(report_path, 'w') as f:
+        f.write('pin,month b,month a,first date over {threshold} (day),'
+                'first date over {threshold} (month),days overall,'
+                'days over {threshold},sum over valid days,'
+                'average valid day count\n'.format(threshold=threshold))
 
     for data_file in os.listdir(data_dir):
         data_file = os.path.abspath(os.path.join(data_dir, data_file))
@@ -288,7 +295,6 @@ if __name__ == '__main__':
         out_file = data_file + '.csv'
 
         badge_data = BadgeData(data_file)
-        badges.append(badge_data)
 
         sensor_data = badge_data.sensors[sensor_type]
 
@@ -305,14 +311,8 @@ if __name__ == '__main__':
         sensor_data.write_to_csv(out_file)
         print('done')
 
-    # write the report file
-    report_path = os.path.join(data_dir, 'report.csv')
-    with open(report_path, 'w') as f:
-        f.write('pin,month b,month a,first date over {threshold} (day),'
-                'first date over {threshold} (month),days overall,'
-                'days over {threshold},sum over valid days,'
-                'average valid day count\n'.format(threshold=threshold))
-        for badge_data in badges:
+        # write the report file
+        with open(report_path, 'a') as f:
             sensor_data = badge_data.sensors[sensor_type]
             first_valid_day = sensor_data.get_first_date_over(threshold)
             n_days = sensor_data.get_n_days()
