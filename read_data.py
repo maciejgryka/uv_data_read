@@ -318,7 +318,7 @@ if __name__ == '__main__':
             n_days = sensor_data.get_n_days()
             n_valid_days = sensor_data.get_n_days(threshold)
             sum_valid_days = sensor_data.get_sum(threshold)
-            avg_valid_days = sum_valid_days / n_valid_days
+            avg_valid_days = sum_valid_days / n_valid_days if n_valid_days else '-'
             
             f.write('{pin},{b},{a},{first_valid_day},{first_valid_month},'
                     '{n_days},{n_valid_days},{sum_valid_days},'
@@ -326,8 +326,8 @@ if __name__ == '__main__':
                         pin=badge_data.pin,
                         b=badge_data.b,
                         a=badge_data.a,
-                        first_valid_day=first_valid_day,
-                        first_valid_month=time.strptime(first_valid_day, '%Y-%m-%d').tm_mon,
+                        first_valid_day=first_valid_day or '-',
+                        first_valid_month=time.strptime(first_valid_day, '%Y-%m-%d').tm_mon if first_valid_day else '-',
                         n_days=n_days,
                         n_valid_days=n_valid_days,
                         sum_valid_days=sum_valid_days,
