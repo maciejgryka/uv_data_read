@@ -78,6 +78,8 @@ class BadgeData(object):
                     current_date = get_date_from_timestamp(line)
                 elif sensor_reading:
                     # sensor reading line, add it to the dict
+                    # import pdb; pdb.set_trace()
+                    # print(line)
                     self.add_reading(sensor_reading)
                 else:
                     self.header += line
@@ -240,12 +242,17 @@ class SensorReading(object):
     def from_line(cls, line, date): 
         re_obj = cls.pattern.match(line)
         if re_obj:
-            return SensorReading(
-                date=date,
-                time=re_obj.group('time'),
-                val=re_obj.group('val'),
-                sensor_type=re_obj.group('sensor_type')
-            )
+            # sometimes data files are corrupted...
+            try:
+                return SensorReading(
+                    date=date,
+                    time=re_obj.group('time'),
+                    val=re_obj.group('val'),
+                    sensor_type=re_obj.group('sensor_type')
+                )
+            except:
+                print('\nWARNING: invalid line at date {0}: \"{1}\"'.format(date, line.strip('\n')))
+                return None
         else:
             return None
 
@@ -277,7 +284,14 @@ if __name__ == '__main__':
 
     data_dir = sys.argv[1]
 
-    badges = []
+
+    # write CSV header
+    report_path = os.path.join(data_dir, 'report.csv')
+    with open(report_path, 'w') as f:
+        f.write('pin,month b,month a,first date over {threshold} (day),'
+                'first date over {threshold} (month),days overall,'
+                'days over {threshold},sum over valid days,'
+                'average valid day count\n'.format(threshold=threshold))
 
     for data_file in os.listdir(data_dir):
         data_file = os.path.abspath(os.path.join(data_dir, data_file))
@@ -289,7 +303,6 @@ if __name__ == '__main__':
         out_file = data_file + '.csv'
 
         badge_data = BadgeData(data_file)
-        badges.append(badge_data)
 
         sensor_data = badge_data.sensors[sensor_type]
 
@@ -306,20 +319,14 @@ if __name__ == '__main__':
         sensor_data.write_to_csv(out_file)
         print('done')
 
-    # write the report file
-    report_path = os.path.join(data_dir, 'report.csv')
-    with open(report_path, 'w') as f:
-        f.write('pin,month b,month a,first date over {threshold} (day),'
-                'first date over {threshold} (month),days overall,'
-                'days over {threshold},sum over valid days,'
-                'average valid day count\n'.format(threshold=threshold))
-        for badge_data in badges:
+        # write the report file
+        with open(report_path, 'a') as f:
             sensor_data = badge_data.sensors[sensor_type]
             first_valid_day = sensor_data.get_first_date_over(threshold)
             n_days = sensor_data.get_n_days()
             n_valid_days = sensor_data.get_n_days(threshold)
             sum_valid_days = sensor_data.get_sum(threshold)
-            avg_valid_days = sum_valid_days / n_valid_days
+            avg_valid_days = sum_valid_days / n_valid_days if n_valid_days else '-'
             
             f.write('{pin},{b},{a},{first_valid_day},{first_valid_month},'
                     '{n_days},{n_valid_days},{sum_valid_days},'
@@ -327,8 +334,8 @@ if __name__ == '__main__':
                         pin=badge_data.pin,
                         b=badge_data.b,
                         a=badge_data.a,
-                        first_valid_day=first_valid_day,
-                        first_valid_month=time.strptime(first_valid_day, '%Y-%m-%d').tm_mon,
+                        first_valid_day=first_valid_day or '-',
+                        first_valid_month=time.strptime(first_valid_day, '%Y-%m-%d').tm_mon if first_valid_day else '-',
                         n_days=n_days,
                         n_valid_days=n_valid_days,
                         sum_valid_days=sum_valid_days,

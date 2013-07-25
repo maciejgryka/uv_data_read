@@ -39,3 +39,4 @@ nosetests.xml
 *.sublime-workspace
 
 data/
+.DS_Store
