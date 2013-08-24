@@ -298,9 +298,9 @@ if __name__ == '__main__':
     # write CSV header
     report_path = os.path.join(data_dir, 'report.csv')
     with open(report_path, 'w') as f:
-        f.write('pin,badge_id,month b,month a,first date over {threshold} (day),'
-                'first date over {threshold} (month),days overall,sum over all days,'
-                'days over {threshold},sum over valid days,'
+        f.write('pin,badge_id,month b,month a,first date over {threshold},'
+                'first date over {threshold} (month),number of days overall,sum over all days,'
+                'number days over {threshold},sum for days over {threshold},7 day sum from first day over {threshold},'
                 'average valid day count\n'.format(threshold=threshold))
 
     for data_file in os.listdir(data_dir):
@@ -348,8 +348,8 @@ if __name__ == '__main__':
             avg_valid_days = sum_valid_days / n_valid_days if n_valid_days else '-'
             
             f.write('{pin},{badge_id},{b},{a},{first_valid_day},{first_valid_month},'
-                    '{n_days},{sum_all_days},{n_valid_days},{sum_valid_days},'
-                    '{avg_valid_day}\n'.format(
+                    '{n_days},{sum_all_days},{n_valid_days},{sum_valid_days},{sum_seven_days},'
+                    '{avg_valid_day:.2f}\n'.format(
                         pin=badge_data.pin,
                         badge_id=badge_data.badge_id,
                         b=badge_data.b,
@@ -360,6 +360,7 @@ if __name__ == '__main__':
                         sum_all_days=sum_all_days,
                         n_valid_days=n_valid_days,
                         sum_valid_days=sum_valid_days,
+                        sum_seven_days='NULL',
                         avg_valid_day=avg_valid_days
             ))
     print(open(report_path, 'r').read())
