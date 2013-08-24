@@ -45,6 +45,8 @@ class BadgeData(object):
         $
     ''')
 
+    badge_id_pattern = re.compile('Badge ID:\s(?P<badge_id>[0-9]{4})')
+
     def __init__(self, data_file, header=''):
         self.header = header
         self.sensors = {}
@@ -66,6 +68,13 @@ class BadgeData(object):
             return None
         return name
 
+    def add_to_header(self, line):
+        """Add line to header and do some processing on it."""
+        match = self.badge_id_pattern.match(line)
+        if match:
+            self.badge_id = match.group('badge_id')
+        self.header += line
+
     def parse(self, data_file):
         current_date = ''
         # read the data
@@ -82,7 +91,7 @@ class BadgeData(object):
                     # print(line)
                     self.add_reading(sensor_reading)
                 else:
-                    self.header += line
+                    self.add_to_header(line)
 
     def add_reading(self, sensor_reading):
         """Add reading to the appropriate SensorData instance."""
@@ -287,7 +296,7 @@ if __name__ == '__main__':
     # write CSV header
     report_path = os.path.join(data_dir, 'report.csv')
     with open(report_path, 'w') as f:
-        f.write('pin,month b,month a,first date over {threshold} (day),'
+        f.write('pin,badge_id,month b,month a,first date over {threshold} (day),'
                 'first date over {threshold} (month),days overall,'
                 'days over {threshold},sum over valid days,'
                 'average valid day count\n'.format(threshold=threshold))
@@ -327,10 +336,11 @@ if __name__ == '__main__':
             sum_valid_days = sensor_data.get_sum(threshold)
             avg_valid_days = sum_valid_days / n_valid_days if n_valid_days else '-'
             
-            f.write('{pin},{b},{a},{first_valid_day},{first_valid_month},'
+            f.write('{pin},{badge_id},{b},{a},{first_valid_day},{first_valid_month},'
                     '{n_days},{n_valid_days},{sum_valid_days},'
                     '{avg_valid_day}\n'.format(
                         pin=badge_data.pin,
+                        badge_id=badge_data.badge_id,
                         b=badge_data.b,
                         a=badge_data.a,
                         first_valid_day=first_valid_day or '-',
