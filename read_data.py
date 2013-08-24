@@ -315,8 +315,8 @@ if __name__ == '__main__':
         sensor_data = badge_data.sensors[sensor_type]
 
         with open(data_file + '_report.txt', 'w') as f:
-            f.write('Sensor {0} data for {1}\n\n'.format(sensor_type,
-                badge_data.name
+            f.write('Sensor {0} data for {1} (badge id: {2})\n\n'.format(
+                sensor_type, badge_data.name, badge_data.badge_id
             ))
             for date in sensor_data.dates:
                 f.write('{0}\t{1}\t{2}\n'.format(date, sensor_data.sensor_type,
