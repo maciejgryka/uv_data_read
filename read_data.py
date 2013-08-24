@@ -135,6 +135,7 @@ class SensorData(object):
 
     @property
     def dates(self):
+        """Disregard the first day, it's usually dodgy."""
         return self._dates[1:]
 
     def get_value(self, date, time):
@@ -259,7 +260,8 @@ class SensorReading(object):
                     sensor_type=re_obj.group('sensor_type')
                 )
             except:
-                print('\nWARNING: invalid line at date {0}: \"{1}\"'.format(date, line.strip('\n')))
+                print('\n\n\tWARNING: ignoring invalid line at date {0}: '
+                      '\"{1}\"\n'.format(date, line.strip('\n')))
                 return None
         else:
             return None
@@ -330,7 +332,15 @@ if __name__ == '__main__':
         # write the report file
         with open(report_path, 'a') as f:
             sensor_data = badge_data.sensors[sensor_type]
-            first_valid_day = sensor_data.get_first_date_over(threshold)
+            first_valid_day = sensor_data.get_first_date_over(threshold) or '-'
+            if first_valid_day == '-':
+                first_valid_month = '-'
+            else:
+                try:
+                    first_valid_month = time.strptime(first_valid_day, '%Y-%m-%d').tm_mon
+                except:
+                    print('\n\tWARNING: invalid date: \"{0}\"\n'.format(first_valid_day))
+                    first_valid_month = '-'
             n_days = sensor_data.get_n_days()
             n_valid_days = sensor_data.get_n_days(threshold)
             sum_valid_days = sensor_data.get_sum(threshold)
@@ -343,8 +353,8 @@ if __name__ == '__main__':
                         badge_id=badge_data.badge_id,
                         b=badge_data.b,
                         a=badge_data.a,
-                        first_valid_day=first_valid_day or '-',
-                        first_valid_month=time.strptime(first_valid_day, '%Y-%m-%d').tm_mon if first_valid_day else '-',
+                        first_valid_day=first_valid_day,
+                        first_valid_month=first_valid_month,
                         n_days=n_days,
                         n_valid_days=n_valid_days,
                         sum_valid_days=sum_valid_days,
