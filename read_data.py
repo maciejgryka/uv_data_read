@@ -299,7 +299,7 @@ if __name__ == '__main__':
     report_path = os.path.join(data_dir, 'report.csv')
     with open(report_path, 'w') as f:
         f.write('pin,badge_id,month b,month a,first date over {threshold} (day),'
-                'first date over {threshold} (month),days overall,'
+                'first date over {threshold} (month),days overall,sum over all days,'
                 'days over {threshold},sum over valid days,'
                 'average valid day count\n'.format(threshold=threshold))
 
@@ -342,12 +342,13 @@ if __name__ == '__main__':
                     print('\n\tWARNING: invalid date: \"{0}\"\n'.format(first_valid_day))
                     first_valid_month = '-'
             n_days = sensor_data.get_n_days()
+            sum_all_days = sensor_data.get_sum()
             n_valid_days = sensor_data.get_n_days(threshold)
             sum_valid_days = sensor_data.get_sum(threshold)
             avg_valid_days = sum_valid_days / n_valid_days if n_valid_days else '-'
             
             f.write('{pin},{badge_id},{b},{a},{first_valid_day},{first_valid_month},'
-                    '{n_days},{n_valid_days},{sum_valid_days},'
+                    '{n_days},{sum_all_days},{n_valid_days},{sum_valid_days},'
                     '{avg_valid_day}\n'.format(
                         pin=badge_data.pin,
                         badge_id=badge_data.badge_id,
@@ -356,6 +357,7 @@ if __name__ == '__main__':
                         first_valid_day=first_valid_day,
                         first_valid_month=first_valid_month,
                         n_days=n_days,
+                        sum_all_days=sum_all_days,
                         n_valid_days=n_valid_days,
                         sum_valid_days=sum_valid_days,
                         avg_valid_day=avg_valid_days
