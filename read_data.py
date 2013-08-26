@@ -1,11 +1,12 @@
  # -*- coding: utf-8 -*-
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 
 import os
 import sys
 import re
 import csv
 import time
+from datetime import datetime, timedelta
 from itertools import izip
 from collections import OrderedDict, defaultdict
 
@@ -23,6 +24,18 @@ timestamp_pattern = re.compile('''(?x)
         Timestamp                               # word 'Timestamp'
         r\r?\n                                 # line ending
 ''')
+
+
+def daterange(start_date, n_days, format='%Y-%m-%d'):
+    """
+    Generator that returns strings for n_days after start_date (excluding the
+    last date).
+
+    """
+    start_date = datetime.fromtimestamp(time.mktime(time.strptime(start_date, format)))
+    end_date = start_date + timedelta(n_days)
+    for d in range(int((end_date - start_date).days)):
+        yield str((start_date + timedelta(d)).date())
 
 
 class BadgeData(object):
@@ -188,6 +201,13 @@ class SensorData(object):
                 if day_sums[day] > min_val
             )
 
+    def get_sum_over_n_days(self, start_date, n_days):
+        day_sums = self.get_day_sums()
+        s = 0.0
+        for date in daterange(start_date, n_days):
+            s += day_sums[date]
+        return s
+
     def write_to_csv(self, file_path):
         with open(file_path, 'w') as f:
             # write row of times
@@ -299,9 +319,9 @@ if __name__ == '__main__':
     report_path = os.path.join(data_dir, 'report.csv')
     with open(report_path, 'w') as f:
         f.write('pin,badge_id,month b,month a,first date over {threshold},'
-                'first date over {threshold} (month),number of days overall,sum over all days,'
-                'number days over {threshold},sum for days over {threshold},7 day sum from first day over {threshold},'
-                'average valid day count\n'.format(threshold=threshold))
+                'first date over {threshold} (month),7 day sum from the first day over {threshold},number of days overall,sum over all days,'
+                'number days over {threshold},sum for days over {threshold},'
+                'average count for days over {threshold}\n'.format(threshold=int(threshold)))
 
     for data_file in os.listdir(data_dir):
         data_file = os.path.abspath(os.path.join(data_dir, data_file))
@@ -345,10 +365,11 @@ if __name__ == '__main__':
             sum_all_days = sensor_data.get_sum()
             n_valid_days = sensor_data.get_n_days(threshold)
             sum_valid_days = sensor_data.get_sum(threshold)
+            sum_seven_days = sensor_data.get_sum_over_n_days(first_valid_day, 7)
             avg_valid_days = sum_valid_days / n_valid_days if n_valid_days else '-'
             
             f.write('{pin},{badge_id},{b},{a},{first_valid_day},{first_valid_month},'
-                    '{n_days},{sum_all_days},{n_valid_days},{sum_valid_days},{sum_seven_days},'
+                    '{sum_seven_days},{n_days},{sum_all_days},{n_valid_days},{sum_valid_days},'
                     '{avg_valid_day:.2f}\n'.format(
                         pin=badge_data.pin,
                         badge_id=badge_data.badge_id,
@@ -356,11 +377,11 @@ if __name__ == '__main__':
                         a=badge_data.a,
                         first_valid_day=first_valid_day,
                         first_valid_month=first_valid_month,
+                        sum_seven_days=sum_seven_days,
                         n_days=n_days,
                         sum_all_days=sum_all_days,
                         n_valid_days=n_valid_days,
                         sum_valid_days=sum_valid_days,
-                        sum_seven_days='NULL',
                         avg_valid_day=avg_valid_days
             ))
     print(open(report_path, 'r').read())
