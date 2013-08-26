@@ -60,6 +60,8 @@ class BadgeData(object):
 
     badge_id_pattern = re.compile('Badge ID:\s(?P<badge_id>[0-9]{4})')
 
+    _badge_id = '-'
+
     def __init__(self, data_file, header=''):
         self.header = header
         self.sensors = {}
@@ -80,6 +82,14 @@ class BadgeData(object):
         if cls.name_pattern.match(name) is None:
             return None
         return name
+
+    @property
+    def badge_id(self):
+        return self._badge_id
+
+    @badge_id.setter
+    def badge_id(self, value):
+        self._badge_id = value
 
     def add_to_header(self, line):
         """Add line to header and do some processing on it."""
@@ -353,10 +363,9 @@ if __name__ == '__main__':
         with open(report_path, 'a') as f:
             sensor_data = badge_data.sensors[sensor_type]
             first_valid_day = sensor_data.get_first_date_over(threshold) or '-'
-            if first_valid_day == '-':
-                first_valid_month = '-'
-                sum_seven_days = '-'
-            else:
+            first_valid_month = '-'
+            sum_seven_days = '-'
+            if first_valid_day != '-':
                 try:
                     first_valid_month = time.strptime(first_valid_day, '%Y-%m-%d').tm_mon
                     sum_seven_days = sensor_data.get_sum_over_n_days(first_valid_day, 7)
