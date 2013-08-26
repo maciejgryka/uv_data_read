@@ -355,9 +355,11 @@ if __name__ == '__main__':
             first_valid_day = sensor_data.get_first_date_over(threshold) or '-'
             if first_valid_day == '-':
                 first_valid_month = '-'
+                sum_seven_days = '-'
             else:
                 try:
                     first_valid_month = time.strptime(first_valid_day, '%Y-%m-%d').tm_mon
+                    sum_seven_days = sensor_data.get_sum_over_n_days(first_valid_day, 7)
                 except:
                     print('\n\tWARNING: invalid date: \"{0}\"\n'.format(first_valid_day))
                     first_valid_month = '-'
@@ -365,12 +367,11 @@ if __name__ == '__main__':
             sum_all_days = sensor_data.get_sum()
             n_valid_days = sensor_data.get_n_days(threshold)
             sum_valid_days = sensor_data.get_sum(threshold)
-            sum_seven_days = sensor_data.get_sum_over_n_days(first_valid_day, 7)
             avg_valid_days = sum_valid_days / n_valid_days if n_valid_days else '-'
             
             f.write('{pin},{badge_id},{b},{a},{first_valid_day},{first_valid_month},'
                     '{sum_seven_days},{n_days},{sum_all_days},{n_valid_days},{sum_valid_days},'
-                    '{avg_valid_day:.2f}\n'.format(
+                    '{avg_valid_day}\n'.format(
                         pin=badge_data.pin,
                         badge_id=badge_data.badge_id,
                         b=badge_data.b,
