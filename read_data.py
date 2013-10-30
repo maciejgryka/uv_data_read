@@ -12,6 +12,7 @@ from collections import OrderedDict, defaultdict
 
 
 THRESHOLD = 50.0
+MINUTE_THRESHOLD = 1023
 SENSOR_TYPE = 1
 
 
@@ -103,6 +104,8 @@ class BadgeData(object):
         # read the data
         with open(data_file, 'r') as f:
             for line in f:
+                # try to interpret the line both as timestampt and as a
+                # sensor reading; the wrong one will be None
                 timestamp = get_date_from_timestamp(line)
                 sensor_reading = SensorReading.from_line(line, current_date)
                 if timestamp:
@@ -110,10 +113,10 @@ class BadgeData(object):
                     current_date = get_date_from_timestamp(line)
                 elif sensor_reading:
                     # sensor reading line, add it to the dict
-                    # import pdb; pdb.set_trace()
-                    # print(line)
                     self.add_reading(sensor_reading)
                 else:
+                    # if it's neither a timestamp nor a sensor reading it is
+                    # a part of the header
                     self.add_to_header(line)
 
     def add_reading(self, sensor_reading):
@@ -126,7 +129,7 @@ class BadgeData(object):
 
 
 class SensorData(object):
-    """Represents all sensor readings from data file."""
+    """Represents all sensor readings from a data file."""
 
     def __init__(self, sensor_type):
         self.sensor_type = sensor_type
@@ -136,7 +139,7 @@ class SensorData(object):
 
         self._times = set()
         # we want dates to be unique too, but also to preserve ordering, so we
-        # manually keep track of what goes on there
+        # will manually keep track of what goes in there
         self._dates = []
 
     def add_reading(self, reading):
@@ -158,7 +161,11 @@ class SensorData(object):
 
     @property
     def dates(self):
-        """Disregard the first day, it's usually dodgy."""
+        """
+        Disregard the first day, it's usually dodgy and anyway not important
+        (it's the day the sensors are tunerd on, packed and sent to patients.)
+        
+        """
         return self._dates[1:]
 
     def get_value(self, date, time):
@@ -217,6 +224,26 @@ class SensorData(object):
         for date in daterange(start_date, n_days):
             s += day_sums[date]
         return s
+
+    def get_avg_daily_minutes_over(self, minute_threshold, day_theshold=0.0):
+        """
+        Return mean daily number of minutes over the specified threshold. If
+        <day_threshold> is specified, only days with sums larger or equal to it
+        are included.
+
+        """
+        day_sums = self.get_day_sums()
+        days = [day[0] for day in day_sums.items() if day[0] >= day_theshold]
+
+        daily_counts = []
+        for day in days:
+            readings = [
+                reading
+                for reading in self.readings 
+                if reading.date == day and reading.value >= minute_threshold
+            ]
+            daily_counts.append(len(readings))
+        return float(sum(daily_counts)) / len(daily_counts)
 
     def write_to_csv(self, file_path):
         with open(file_path, 'w') as f:
@@ -322,16 +349,26 @@ if __name__ == '__main__':
     if len(sys.argv) is 3:
         threshold = float(sys.argv[2])
 
+    minute_threshold = MINUTE_THRESHOLD
+
     data_dir = sys.argv[1]
 
 
     # write CSV header
     report_path = os.path.join(data_dir, 'report.csv')
     with open(report_path, 'w') as f:
-        f.write('pin,badge_id,month b,month a,first date over {threshold},'
-                'first date over {threshold} (month),7 day sum from the first day over {threshold},number of days overall,sum over all days,'
-                'number days over {threshold},sum for days over {threshold},'
-                'average count for days over {threshold}\n'.format(threshold=int(threshold)))
+        f.write(
+            'pin,badge_id,month b,month a,first date over {threshold},'
+            'first date over {threshold} (month),'
+            '7 day sum from the first day over {threshold},'
+            'number of days overall,sum over all days,'
+            'number days over {threshold},sum for days over {threshold},'
+            'average count for days over {threshold},'
+            'avg. minutes over {minute_threshold}\n'.format(
+                threshold=int(threshold),
+                minute_threshold=int(minute_threshold)
+            )
+        )
 
     for data_file in os.listdir(data_dir):
         data_file = os.path.abspath(os.path.join(data_dir, data_file))
@@ -377,10 +414,11 @@ if __name__ == '__main__':
             n_valid_days = sensor_data.get_n_days(threshold)
             sum_valid_days = sensor_data.get_sum(threshold)
             avg_valid_days = sum_valid_days / n_valid_days if n_valid_days else '-'
+            avg_daily_minutes_over = sensor_data.get_avg_daily_minutes_over(minute_threshold, threshold)
             
             f.write('{pin},{badge_id},{b},{a},{first_valid_day},{first_valid_month},'
                     '{sum_seven_days},{n_days},{sum_all_days},{n_valid_days},{sum_valid_days},'
-                    '{avg_valid_day}\n'.format(
+                    '{avg_valid_day},{avg_daily_minutes_over}\n'.format(
                         pin=badge_data.pin,
                         badge_id=badge_data.badge_id,
                         b=badge_data.b,
@@ -392,6 +430,7 @@ if __name__ == '__main__':
                         sum_all_days=sum_all_days,
                         n_valid_days=n_valid_days,
                         sum_valid_days=sum_valid_days,
-                        avg_valid_day=avg_valid_days
+                        avg_valid_day=avg_valid_days,
+                        avg_daily_minutes_over=avg_daily_minutes_over
             ))
     print(open(report_path, 'r').read())
