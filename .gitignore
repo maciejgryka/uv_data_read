@@ -38,5 +38,7 @@ nosetests.xml
 *.sublime-project
 *.sublime-workspace
 
+venv/
 data/
+profile_output
 .DS_Store

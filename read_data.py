@@ -237,12 +237,12 @@ class SensorData(object):
 
         daily_counts = []
         for day in days:
-            readings = [
-                reading
+            n_readings = sum(
+                1
                 for reading in self.readings 
                 if reading.date == day and reading.value >= minute_threshold
-            ]
-            daily_counts.append(len(readings))
+            )
+            daily_counts.append(n_readings)
         return float(sum(daily_counts)) / len(daily_counts)
 
     def write_to_csv(self, file_path):
@@ -337,7 +337,7 @@ def get_date_from_timestamp(timestamp):
         return None
 
 
-if __name__ == '__main__':
+def main():
     n_args = len(sys.argv)
     if not (n_args == 2 or n_args == 3):
         print('Need arguments: data_dir [threshold]')
@@ -433,4 +433,8 @@ if __name__ == '__main__':
                         avg_valid_day=avg_valid_days,
                         avg_daily_minutes_over=avg_daily_minutes_over
             ))
-    print(open(report_path, 'r').read())
+    # print(open(report_path, 'r').read())
+
+
+if __name__ == '__main__':
+    main()
